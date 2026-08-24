@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="알고리즘과 관련 개념의 계보를 왼쪽에서 오른쪽으로 탐색하는 인터랙티브 아틀라스"
+    >
+    <meta name="color-scheme" content="light dark">
+    <title>Algoria — Algorithm Lineage Atlas</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+
+  <body>
+    <div class="app-shell" id="app" aria-busy="true">
+      <header class="toolbar" id="toolbar" aria-label="Algoria 도구 모음">
+        <div class="brand" aria-label="Algoria">
+          <span class="brand__name">Algoria</span>
+          <span class="brand__descriptor" id="brand-descriptor">알고리즘 계통도</span>
+        </div>
+
+        <div class="search" role="search">
+          <label class="sr-only" id="search-label" for="search-input">알고리즘과 관련 개념 검색</label>
+          <input
+            class="search__input"
+            id="search-input"
+            type="search"
+            role="combobox"
+            placeholder="알고리즘과 관련 개념 검색"
+            autocomplete="off"
+            spellcheck="false"
+            aria-autocomplete="list"
+            aria-controls="search-results"
+            aria-expanded="false"
+          >
+          <div class="search-popover" id="search-popover" hidden>
+            <div
+              class="search-filters"
+              id="search-filters"
+              role="group"
+              aria-label="검색 결과 유형"
+            ></div>
+            <div
+              class="search-results"
+              id="search-results"
+              role="listbox"
+              aria-label="검색 결과"
+            ></div>
+          </div>
+        </div>
+
+        <div class="view-controls" id="view-controls" aria-label="계통도 보기 조절">
+          <div
+            class="locale-switch"
+            id="locale-switch"
+            role="group"
+            aria-label="표시 언어"
+          >
+            <button
+              class="locale-button is-active"
+              type="button"
+              data-locale="ko"
+              aria-pressed="true"
+            >
+              한국어
+            </button>
+            <button
+              class="locale-button"
+              type="button"
+              data-locale="en"
+              aria-pressed="false"
+            >
+              EN
+            </button>
+          </div>
+          <button
+            class="icon-button theme-toggle"
+            id="theme-toggle-button"
+            type="button"
+            aria-label="다크 모드로 전환"
+            aria-pressed="false"
+            title="다크 모드로 전환"
+          >
+            <span id="theme-toggle-icon" aria-hidden="true">☾</span>
+          </button>
+          <button
+            class="icon-button"
+            id="zoom-out-button"
+            type="button"
+            aria-label="축소"
+            title="Zoom out"
+            disabled
+          >
+            −
+          </button>
+          <output class="zoom-level" id="zoom-level" aria-live="polite">100%</output>
+          <button
+            class="icon-button"
+            id="zoom-in-button"
+            type="button"
+            aria-label="확대"
+            title="Zoom in"
+            disabled
+          >
+            +
+          </button>
+          <button
+            class="reset-button"
+            id="reset-view-button"
+            type="button"
+            disabled
+          >
+            보기 초기화
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace" id="workspace">
+        <div class="app-status" id="app-status" role="alert" hidden>
+          <div class="app-status__card">
+            <p class="app-status__eyebrow">Algoria</p>
+            <h1 class="app-status__title">데이터를 불러오지 못했습니다</h1>
+            <p class="app-status__copy">
+              Could not load the algorithm atlas. 로컬 data 파일과
+              index.html의 script 순서를 확인한 뒤 페이지를 새로고침해 주세요.
+            </p>
+          </div>
+        </div>
+
+        <section
+          class="tree-viewport"
+          id="tree-viewport"
+          aria-labelledby="tree-heading"
+          aria-describedby="canvas-instructions"
+          tabindex="-1"
+        >
+          <h1 class="sr-only" id="tree-heading">알고리즘 계통도</h1>
+          <p class="sr-only" id="canvas-instructions">
+            계통도 노드를 선택해 오른쪽으로 가지를 펼칠 수 있습니다. 빈
+            공간을 드래그해 이동하고, Control 또는 Command 키와 휠로
+            확대하거나 축소할 수 있습니다. 방향키로 가시 노드를 이동하고
+            왼쪽과 오른쪽 방향키로 가지를 접거나 펼칠 수 있습니다.
+            알고리즘에서는 Enter 키로 상세 정보를 열고 Space 키로 계보를
+            펼칠 수 있습니다.
+          </p>
+
+          <div class="tree-surface" id="tree-surface">
+            <div class="tree-world" id="tree-world">
+              <svg
+                class="connector-layer"
+                id="connector-layer"
+                aria-hidden="true"
+                focusable="false"
+                preserveAspectRatio="none"
+              ></svg>
+              <div
+                class="node-layer"
+                id="node-layer"
+                role="tree"
+                aria-label="Algoria 계통도 노드"
+              ></div>
+            </div>
+          </div>
+        </section>
+
+        <nav
+          class="lineage-path"
+          id="lineage-path"
+          aria-label="현재 계통 경로"
+          aria-live="polite"
+          hidden
+        ></nav>
+
+        <div class="canvas-hint" id="canvas-hint" aria-hidden="true">
+          방향키: 탐색 · <kbd>Enter</kbd>: 알고리즘 상세 · 빈 공간 드래그:
+          이동 · <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + 휠: 확대/축소
+        </div>
+
+        <aside
+          class="detail-panel"
+          id="detail-panel"
+          aria-labelledby="detail-title"
+          aria-hidden="true"
+          tabindex="-1"
+          hidden
+        >
+          <header class="detail-panel__header">
+            <div class="detail-panel__heading">
+              <p class="detail-panel__eyebrow" id="detail-eyebrow">알고리즘 상세</p>
+              <h2 class="detail-panel__title" id="detail-title">Algorithm</h2>
+              <p
+                class="detail-panel__aliases"
+                id="detail-aliases"
+                hidden
+              ></p>
+            </div>
+            <button
+              class="detail-panel__close"
+              id="detail-close-button"
+              type="button"
+              aria-label="상세 패널 닫기"
+              title="Close"
+            >
+              ×
+            </button>
+          </header>
+          <div
+            class="detail-panel__content"
+            id="detail-content"
+            role="region"
+            aria-label="스크롤 가능한 알고리즘 상세 내용"
+            tabindex="0"
+          ></div>
+        </aside>
+      </main>
+
+      <div class="sr-only" id="live-region" aria-live="polite" aria-atomic="true"></div>
+
+      <noscript>
+        <div class="noscript-message">
+          Algoria의 계통도를 보려면 브라우저에서 JavaScript를 활성화해 주세요.
+        </div>
+      </noscript>
+    </div>
+
+    <script src="data/registry.js" defer></script>
+    <script src="data/meta.js" defer></script>
+    <script src="data/sources.js" defer></script>
+    <script src="data/sources-expansion.js" defer></script>
+    <script src="data/sources-applied.js" defer></script>
+    <script src="data/sources-wave180.js" defer></script>
+    <script src="data/sources-wave250.js" defer></script>
+    <script src="data/sources-lineage-phase4.js" defer></script>
+    <script src="data/sources-systems-phase5.js" defer></script>
+    <script src="data/concepts.js" defer></script>
+    <script src="data/concepts-wave180.js" defer></script>
+    <script src="data/concepts-wave250.js" defer></script>
+    <script src="data/concepts-systems-phase5.js" defer></script>
+    <script src="data/wave250-catalog.js" defer></script>
+    <script src="data/systems-phase5-catalog.js" defer></script>
+    <script src="data/algorithms/sorting-searching.js" defer></script>
+    <script src="data/algorithms/graph-string.js" defer></script>
+    <script src="data/algorithms/math-crypto-compression.js" defer></script>
+    <script src="data/algorithms/geometry-ml-optimization.js" defer></script>
+    <script src="data/algorithms/core-expansion.js" defer></script>
+    <script src="data/algorithms/applied-expansion.js" defer></script>
+    <script src="data/algorithms/foundations-wave180.js" defer></script>
+    <script src="data/algorithms/applied-wave180.js" defer></script>
+    <script src="data/algorithms/wave250-foundations.js" defer></script>
+    <script src="data/algorithms/wave250-math-crypto.js" defer></script>
+    <script src="data/algorithms/wave250-applied.js" defer></script>
+    <script src="data/algorithms/systems-phase5.js" defer></script>
+    <script src="data/relations/problems.js" defer></script>
+    <script src="data/relations/techniques.js" defer></script>
+    <script src="data/relations/data-structures.js" defer></script>
+    <script src="data/relations/domains.js" defer></script>
+    <script src="data/relations/lineage.js" defer></script>
+    <script src="data/relations/wave180.js" defer></script>
+    <script src="data/relations/wave250.js" defer></script>
+    <script src="data/relations/lineage-phase4.js" defer></script>
+    <script src="data/relations/systems-phase5.js" defer></script>
+    <script src="data/hierarchy/root.js" defer></script>
+    <script src="data/hierarchy/algorithms.js" defer></script>
+    <script src="data/hierarchy/problems.js" defer></script>
+    <script src="data/hierarchy/techniques.js" defer></script>
+    <script src="data/hierarchy/data-structures.js" defer></script>
+    <script src="data/hierarchy/domains.js" defer></script>
+    <script src="data/hierarchy/wave180-primary.js" defer></script>
+    <script src="data/hierarchy/wave180-semantic.js" defer></script>
+    <script src="data/hierarchy/wave250-primary.js" defer></script>
+    <script src="data/hierarchy/wave250-semantic.js" defer></script>
+    <script src="data/hierarchy/systems-phase5-primary.js" defer></script>
+    <script src="data/hierarchy/systems-phase5-semantic.js" defer></script>
+    <script src="data.js" defer></script>
+    <script src="script.js" defer></script>
+  </body>
+</html>
